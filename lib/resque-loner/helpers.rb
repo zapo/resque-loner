@@ -8,13 +8,16 @@ module Resque
 
         def self.loner_queued?(queue, item)
           return false unless item_is_a_unique_job?(item)
-          redis.get(unique_job_queue_key(queue, item)) == '1'
+          !redis.get(unique_job_queue_key(queue, item)).nil?
         end
 
         def self.mark_loner_as_queued(queue, item)
           return unless item_is_a_unique_job?(item)
           key = unique_job_queue_key(queue, item)
-          redis.set(key, 1)
+
+          class_name = item[:class] || item['class']
+
+          redis.set(key, encode([Time.now.to_i, class_name]))
           unless (ttl = item_ttl(item)) == -1 # no need to incur overhead for default value
             redis.expire(key, ttl)
           end
